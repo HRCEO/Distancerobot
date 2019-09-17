@@ -1,0 +1,76 @@
+/*
+	// Moter CW : (INT1 HIGH INT2 LOW, PWM 1 Signal 1)
+	// Moter CCW : (INT1 LOW INT2 HIGH, PWM 1 Signal 0)
+	// Moter Stop : (INT1 LOW INT2 LOW, PWM 0 Signal 0)  
+	// Moter State 3V(90rpm+-10%) ~ 6V(200rpm+-10%)
+	// 8Mhz MCU
+ */ 
+
+#include <avr/io.h>
+#include <avr/interrupt.h>
+#include <util/delay.h>
+#include "distance.h"
+
+static volatile unsigned int on_time=0;
+
+ISR(TIMER3_CAPT_vect)
+{
+	static unsigned int check_point=0;
+	if(TCCR3B & (1<<ICES3))
+	{
+		check_point=ICR3;
+		TCCR3B &=~(1<<ICES3);
+	}
+	else
+	{
+		on_time=ICR3-check_point;
+		TCCR3B |= (1<<ICES3);
+	}
+	ETIFR=(1<<ICF3);
+}
+void Ultrasonic_moter_Inint(unsigned int Moter_Top) // TIMER1 PWMM MOTER , Ultrasonic setting  (interrupt set)
+{
+	//UItrasonic_set
+	DDRE |= (1<<PORTE6) | (0<<PORTE7);  // PORETE 6 : Trig, PORETE 7 : Input_Capture
+	TCCR3B |= (1<<ICES3) | (1<<ICNC3) | (1<<CS31); // Edge UP, Noise_Cancelsr, 8Clk(1us), Nomal_Timer
+	ETIMSK |= (1<<TICIE3); // Input_Capture InAble
+	
+	//Moter_set
+	DDRB |= (1<<PORTB5) | (1<<PORTB6) | (1<<PORTB7);  // PORETE 5,6 : PWM, PORTE 7 : Signal
+	TCCR1A |= (1<<COM1A1) | (1<<COM1B1) | (0<<WGM10) | (1<<WGM11); // Moter_TIMER3 A,B PORT SET
+	TCCR1B |= (1<<CS11) | (1<<WGM12) | (1<<WGM13); // 8Clk(1us), Fast PWM Mode(ICRn TOP)
+	ICR1=Moter_Top;
+	
+	sei();  // Interrupt Start
+}
+void Ultrasonic_control()
+{
+	PORTE=(1<<PORTE6);
+	_delay_us(10);
+	PORTE=(0<<PORTE6);
+	TCNT3 = 0;
+}
+int Ultrasonic_comparison_Moter(unsigned char Initialization, unsigned char limit, unsigned int R) // Ultrasonic on time, Use setting comparison   (Time scaled distance, error bound +_10%)
+{
+	unsigned char Distance=(on_time/58);
+	if(Distance>limit) Distance=limit;
+	if(Initialization*1.2<Distance) //CW
+	{
+		OCR1A=Voltage_ON;
+		OCR1B=Voltage_ON + R;
+		PORTB=(ON_Signal<<PORTB7);
+	}
+	else if(Initialization*0.8>Distance) //CCW
+	{
+		OCR1A=Voltage_ON;
+		OCR1B=Voltage_ON + R;
+		PORTB=(Off_Signal<<PORTB7);
+	}
+	else // STOP
+	{
+		OCR1A=Voltage_Off;
+		OCR1B=Voltage_Off;
+		PORTB=(Off_Signal<<PORTB7);
+	}
+	return 0;
+}

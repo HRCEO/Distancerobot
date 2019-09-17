@@ -1,0 +1,39 @@
+/*
+ * maintain distance.c
+ *
+ * Created: 2019-06-12 오전 9:13:16
+ * Author : kw898
+ */ 
+
+#define Use_Initialization 15
+#define Detection_limit 30
+#define Motor_Pulse_Period 1000
+
+#include <avr/io.h>
+#include <util/delay.h>
+#include "distance.h"
+
+int main(void)
+{
+	// 블루투스 통신 모드 선택
+	// 1. 거리 유지 모드
+	// 2. RC 모드
+	
+	Ultrasonic_moter_Inint(Motor_Pulse_Period);
+	int R = 0;
+	float acc_f[3], gyro_f[3];
+	float old_Yaw=gyro_f[0];
+	MPU6050I2CInit(400);//400kHz
+    while (1) 
+    {
+		MPU6050I2CReadIMU_f(acc_f, gyro_f);
+		if((old_Yaw-gyro_f[0]) > 0.1) R = 150;
+		else if((old_Yaw-gyro_f[0])< -0.1) R = -150;
+		else R =0;
+		old_Yaw = gyro_f[0];
+		
+		Ultrasonic_control();
+		Ultrasonic_comparison_Moter(Use_Initialization , Detection_limit, R);
+		_delay_ms(100);
+	}
+}

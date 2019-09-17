@@ -1,0 +1,21 @@
+/*
+ * distance.h
+ *
+ * Created: 2019-06-12 ¿ÀÀü 9:14:13
+ *  Author: kw898
+ */ 
+
+
+#ifndef DISTANCE_H_
+#define DISTANCE_H_
+
+#define ON_Signal 1
+#define Off_Signal 0
+#define Voltage_ON 400
+#define Voltage_Off 0
+
+void Ultrasonic_moter_Inint(unsigned int Moter_Top); // TIMER1 PWMM MOTER , Ultrasonic setting  (interrupt set)
+void Ultrasonic_control();
+int Ultrasonic_comparison_Moter(unsigned char Initialization, unsigned char limit, unsigned int R); // Ultrasonic on time, Use setting comparison   (Time scaled distance, error bound +_10%)
+
+#endif /* DISTANCE_H_ */
